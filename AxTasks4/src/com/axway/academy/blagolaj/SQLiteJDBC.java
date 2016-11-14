@@ -71,10 +71,10 @@ public class SQLiteJDBC {
 			System.err.println(e.getClass().getName() + ": " + e.getMessage());
 			System.exit(0);
 		} catch (ClassNotFoundException e) {
-			// TODO Auto-generated catch block
+
 			e.printStackTrace();
 		}
-		System.out.println("Records created successfully");
+		System.out.println("Records inserted successfully");
 	}
 
 	private static void select(String sql) {
@@ -117,9 +117,7 @@ public class SQLiteJDBC {
 			rs.close();
 			stmt.close();
 			c.close();
-		} catch (
-
-		SQLException e) {
+		} catch (SQLException e) {
 			System.err.println(e.getClass().getName() + ": " + e.getMessage());
 			System.exit(0);
 		} catch (ClassNotFoundException e) {
