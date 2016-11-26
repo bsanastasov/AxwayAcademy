@@ -7,16 +7,21 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.UnsupportedEncodingException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.InvalidKeyException;
 import java.security.Key;
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
+import java.security.PrivateKey;
+import java.security.PublicKey;
 import java.security.SecureRandom;
 import java.util.Base64;
+import java.util.Base64.Encoder;
 import java.util.Properties;
-import java.util.Random;
 import java.util.Scanner;
 
 import javax.crypto.BadPaddingException;
@@ -27,12 +32,15 @@ import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 
+/**
+ * @author blagolaj
+ *
+ */
 public class FileOperation {
 
-	Scanner input = new Scanner(System.in);
-	Random rand = new Random();
+	private Scanner input = new Scanner(System.in);
+	private String theKey = getRandKey();
 	FileInputStream inputStream;
-	String theKey = getRandKey();
 
 	public void encrypt() {
 
@@ -51,7 +59,8 @@ public class FileOperation {
 		String fileEncryptedName = input.nextLine();
 		File outputFile = new File(fileEncryptedName);
 
-		cripting(Cipher.ENCRYPT_MODE, getRandKey(), inputFile, outputFile);
+		cripting(Cipher.ENCRYPT_MODE, theKey, inputFile, outputFile);
+		criptingKey(theKey);
 		String fileStoring = fileEncryptedName.concat("StoringKeyFilePair");
 		storeKeyFilePair(fileEncryptedName, theKey, fileStoring);
 	}
@@ -67,16 +76,21 @@ public class FileOperation {
 			File outputFile = new File(fileDecryptedName);
 			String fileStoring = fileName.concat("StoringKeyFilePair");
 			String keyToDecrypt = getKeyToDecrypt(fileName, theKey, fileStoring);
-			System.out.println(keyToDecrypt);
+
 			cripting(Cipher.DECRYPT_MODE, keyToDecrypt, inputFile, outputFile);
 		} else {
 			System.out.println("There is no such file. Try again.");
 			decrypt();
 		}
-		// storeKeyFilePair(fileName, keyToDecrypt, fileStoring);
 
 	}
 
+	/**
+	 * @param cipherMode
+	 * @param key
+	 * @param inputFile
+	 * @param outputFile
+	 */
 	public void cripting(int cipherMode, String key, File inputFile, File outputFile) {
 
 		try {
@@ -118,21 +132,107 @@ public class FileOperation {
 
 	}
 
-	public void encryptKey(String key) {
+	/**
+	 * @param key
+	 * @param encryptionKey
+	 * @return
+	 */
+	public byte[] encryptKey(String key, PublicKey encryptionKey) {
+		Cipher cipher;
+		byte[] encryptedKey = null;
+		try {
+			cipher = Cipher.getInstance("RSA/ECB/OAEPWithSHA1AndMGF1Padding");
+			cipher.init(Cipher.ENCRYPT_MODE, encryptionKey);
+			encryptedKey = cipher.doFinal(key.getBytes("UTF-8"));
+		} catch (NoSuchAlgorithmException e) {
 
-	}
+			e.printStackTrace();
+		} catch (NoSuchPaddingException e) {
 
-	public String padTextToBeMultipleTo16(String text) {
-		int textSize = text.getBytes().length;
-		int leftover = textSize % 16;
-		if (leftover > 0) {
-			for (int i = 0; i < 16 - leftover; i++) {
-				text = text + " ";
-			}
+			e.printStackTrace();
+		} catch (InvalidKeyException e) {
+
+			e.printStackTrace();
+		} catch (IllegalBlockSizeException e) {
+
+			e.printStackTrace();
+		} catch (BadPaddingException e) {
+
+			e.printStackTrace();
+		} catch (UnsupportedEncodingException e) {
+
+			e.printStackTrace();
 		}
-		return text;
+
+		return encryptedKey;
 	}
 
+	/**
+	 * @param encryptedContent
+	 * @param encryptionKey
+	 * @return
+	 */
+	public String decryptKey(byte[] encryptedContent, PrivateKey encryptionKey) {
+		Cipher cipher;
+		String decryptedKey = null;
+		try {
+			cipher = Cipher.getInstance("RSA/ECB/OAEPWithSHA1AndMGF1Padding");
+			cipher.init(Cipher.DECRYPT_MODE, encryptionKey);
+			decryptedKey = new String(cipher.doFinal(encryptedContent), "UTF-8");
+		} catch (NoSuchAlgorithmException e) {
+
+			e.printStackTrace();
+		} catch (NoSuchPaddingException e) {
+
+			e.printStackTrace();
+		} catch (InvalidKeyException e) {
+
+			e.printStackTrace();
+		} catch (IllegalBlockSizeException e) {
+
+			e.printStackTrace();
+		} catch (BadPaddingException e) {
+
+			e.printStackTrace();
+		} catch (UnsupportedEncodingException e) {
+
+			e.printStackTrace();
+		}
+
+		return decryptedKey;
+	}
+
+	/**
+	 * @param key
+	 */
+	public void criptingKey(String key) {
+
+		KeyPairGenerator keyGen = null;
+		try {
+			keyGen = KeyPairGenerator.getInstance("RSA");
+		} catch (NoSuchAlgorithmException e) {
+
+			e.printStackTrace();
+		}
+		KeyPair keyPair = keyGen.generateKeyPair();
+
+		PrivateKey privateKey = keyPair.getPrivate();
+		PublicKey publicKey = keyPair.getPublic();
+
+		byte[] encryptedText = encryptKey(key, publicKey);
+		System.out.println("Encrypted key for files:" + new String(encryptedText));
+
+		Encoder encoder = Base64.getEncoder();
+		System.out.println("Base64 encoded encrypted key for files: " + encoder.encodeToString(encryptedText));
+
+		String decryptedStringWithOriginalKey = decryptKey(encryptedText, privateKey);
+		System.out.println("Decrypted key for files with correct key:" + decryptedStringWithOriginalKey.trim());
+
+	}
+
+	/**
+	 * @return
+	 */
 	public String getRandKey() {
 		KeyGenerator keyGenerator = null;
 		try {
@@ -142,13 +242,19 @@ public class FileOperation {
 			System.out.println("There is no such algorithm");
 			e.printStackTrace();
 		}
-		keyGenerator.init(192, new SecureRandom());
+		keyGenerator.init(128, new SecureRandom());
 		SecretKey key = keyGenerator.generateKey();
 		String encodedKey = Base64.getEncoder().encodeToString(key.getEncoded());
 		return encodedKey;
 
 	}
 
+	/**
+	 * @param fileName
+	 * @param theKey
+	 * @param fileStoring
+	 * @return
+	 */
 	public String getKeyToDecrypt(String fileName, String theKey, String fileStoring) {
 		Properties prop = new Properties();
 		InputStream input;
@@ -157,7 +263,7 @@ public class FileOperation {
 		try {
 			input = new FileInputStream(fileStoring);
 			prop.load(input);
-			// System.out.println(prop.getProperty(fileName));
+
 			key = prop.getProperty(fileName);
 
 		} catch (FileNotFoundException e) {
@@ -170,6 +276,11 @@ public class FileOperation {
 		return key;
 	}
 
+	/**
+	 * @param fileName
+	 * @param theKey
+	 * @param fileStoring
+	 */
 	public void storeKeyFilePair(String fileName, String theKey, String fileStoring) {
 
 		Path fileNameProp = Paths.get(fileStoring);
@@ -182,8 +293,6 @@ public class FileOperation {
 				Properties prop = new Properties();
 				prop.setProperty(fileName, theKey);
 				output = new FileOutputStream(fileStoring);
-				// set the properties value
-				// save properties to project root folder
 
 				prop.store(output, null);
 				output.close();

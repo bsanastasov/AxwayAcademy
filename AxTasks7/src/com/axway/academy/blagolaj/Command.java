@@ -30,6 +30,7 @@ public class Command {
 			break;
 
 		case 3:
+			System.out.println("\nEXIT");
 			return;
 
 		default:
