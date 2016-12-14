@@ -25,6 +25,7 @@
 			</exclusions>
 		</dependency>
 		
+		
 		<dependency>
 <groupId>org.apache.tomcat</groupId>
 <artifactId>tomcat-servlet-api</artifactId>
@@ -36,6 +37,13 @@
 <artifactId>tomcat-catalina</artifactId>
 <version>8.5.8</version>
 </dependency>
+
+    <dependency>
+        <groupId>jstl</groupId>
+        <artifactId>jstl</artifactId>
+        <version>1.2</version>
+    </dependency>
+
 		
 		
 	</dependencies>
